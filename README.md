@@ -49,7 +49,7 @@
 
 👉 系统会自动：
 - 记录 PR 链接  
-- 同步更新任务表（ [`tasks.csv`](https://github.com/siliconflow/siliconflow-open-source-tasks/tasks.csv) ）  
+- 同步更新任务表（ [`tasks.csv`](https://github.com/siliconflow/siliconflow-open-source-tasks/blob/main/tasks.csv) ）  
 - 自动更新 README 展示  
 - 自动检测 PR 状态（open / merged / closed）
 
@@ -73,7 +73,7 @@
    - 接入价值说明  
 
 👉 我们审核通过后将：
-- 自动加入任务池（ [`tasks.csv`](https://github.com/siliconflow/siliconflow-open-source-tasks/tasks.csv)）  
+- 自动加入任务池（ [`tasks.csv`](https://github.com/siliconflow/siliconflow-open-source-tasks/blob/main/tasks.csv)）  
 - 标记 `Source = community`  
 - 开放给开发者认领  
 
