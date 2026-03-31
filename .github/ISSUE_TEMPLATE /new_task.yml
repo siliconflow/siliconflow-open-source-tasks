@@ -1,0 +1,29 @@
+name: New Task Proposal
+description: 提交新的开源接入任务
+title: "[Task Proposal]: "
+labels: ["proposal"]
+
+body:
+  - type: input
+    id: project
+    attributes:
+      label: 项目名称
+      placeholder: 例如 LangChain
+    validations:
+      required: true
+
+  - type: input
+    id: repo
+    attributes:
+      label: GitHub Repo 地址
+      placeholder: https://github.com/xxx/xxx
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 为什么值得接入 SiliconFlow
+      placeholder: 请说明该项目的影响力或使用价值
+    validations:
+      required: true
