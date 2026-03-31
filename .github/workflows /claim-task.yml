@@ -1,0 +1,66 @@
+name: Claim Task
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  claim:
+    if: contains(github.event.comment.body, '/claim')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Handle /claim
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commenter = context.payload.comment.user.login;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.issue.number;
+
+            const { data: issueData } = await github.rest.issues.get({
+              owner, repo, issue_number
+            });
+
+            let body = issueData.body || "";
+
+            // 已被认领
+            if (issueData.labels.some(l => l.name === 'claimed')) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number,
+                body: `❌ 该任务已被他人认领`
+              });
+              return;
+            }
+
+            // 添加 label
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number,
+              labels: ['claimed']
+            });
+
+            // 当前时间
+            const now = new Date().toISOString().split('T')[0];
+
+            // 写入 Owner + 时间
+            if (!body.includes("Owner:")) {
+              body += `\n\nOwner: @${commenter}`;
+            } else {
+              body = body.replace(/Owner:.*/g, `Owner: @${commenter}`);
+            }
+
+            if (!body.includes("ClaimedAt:")) {
+              body += `\nClaimedAt: ${now}`;
+            } else {
+              body = body.replace(/ClaimedAt:.*/g, `ClaimedAt: ${now}`);
+            }
+
+            await github.rest.issues.update({
+              owner, repo, issue_number, body
+            });
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number,
+              body: `✅ @${commenter} 认领成功（10天内未提交PR将自动释放）`
+            });
