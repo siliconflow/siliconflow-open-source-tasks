@@ -6,18 +6,27 @@ on:
 
 jobs:
   submit:
-    if: contains(github.event.comment.body, '/submit')
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write   # ✅ 允许创建 PR
+
     steps:
-      - name: Handle /submit
+      - uses: actions/checkout@v3
+
+      - name: Handle /submit comment
+        id: handle_submit
         uses: actions/github-script@v7
         with:
+          result-encoding: string
           script: |
             const comment = context.payload.comment.body;
             const issue_number = context.issue.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
+            if (!comment.startsWith('/submit')) return;
 
             const parts = comment.split(' ');
             if (parts.length < 2) {
@@ -29,30 +38,94 @@ jobs:
             }
 
             let pr = parts[1];
-
-            // 支持 openclaw/openclaw#7272
             if (!pr.startsWith('http')) {
               const [repoName, prNum] = pr.split('#');
               pr = `https://github.com/${repoName}/pull/${prNum}`;
             }
 
-            // 获取 issue
-            const { data: issueData } = await github.rest.issues.get({
-              owner, repo, issue_number
-            });
-
+            const { data: issueData } = await github.rest.issues.get({ owner, repo, issue_number });
             let body = issueData.body || "";
-
-            // 写入 PR
             if (!body.includes("PR:")) {
               body += `\nPR: ${pr}`;
             } else {
               body = body.replace(/PR:.*/g, `PR: ${pr}`);
             }
 
-            await github.rest.issues.update({
-              owner, repo, issue_number, body
-            });
+            await github.rest.issues.update({ owner, repo, issue_number, body });
+
+            return pr;
+
+      - name: Create PR to update tasks.csv
+        if: steps.handle_submit.outputs.result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_LINK="${{ steps.handle_submit.outputs.result }}"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          BRANCH="update-task-${ISSUE_NUMBER}"
+
+          git checkout -b $BRANCH
+
+          python3 <<EOF
+import csv
+import os
+
+issue_number = int("${ISSUE_NUMBER}")
+pr_link = "${PR_LINK}"
+
+rows = []
+modified = False
+found = False
+
+with open("tasks.csv", newline="", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        if int(row["issue"]) == issue_number:
+            found = True
+            if row.get("pr") != pr_link:
+                row["pr"] = pr_link
+                modified = True
+        rows.append(row)
+
+# 如果不存在该 issue，则新增（防 sync 延迟）
+if not found:
+    rows.append({"issue": issue_number, "pr": pr_link})
+    modified = True
+
+if modified:
+    with open("tasks.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+EOF
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+
+          git add tasks.csv
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Update tasks.csv for issue #${ISSUE_NUMBER}"
+            git push origin $BRANCH
+
+            gh pr create \
+              --title "Update task #${ISSUE_NUMBER}" \
+              --body "Auto update PR link from /submit" \
+              --base main \
+              --head $BRANCH
+          else
+            echo "No changes"
+          fi
+
+      - name: Comment PR recorded
+        if: steps.handle_submit.outputs.result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = "${{ steps.handle_submit.outputs.result }}";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.issue.number;
 
             await github.rest.issues.createComment({
               owner, repo, issue_number,
