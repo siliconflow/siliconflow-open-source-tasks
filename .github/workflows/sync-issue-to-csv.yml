@@ -9,7 +9,7 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
-# 👇 加这里（关键！）
+# ✅ 关键：声明权限（否则 403）
 permissions:
   issues: read
   contents: read
@@ -19,8 +19,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # 1️⃣ 拉代码
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
+      # 2️⃣ 同步逻辑
       - name: Sync Issue to CSV
         uses: actions/github-script@v7
         with:
@@ -30,6 +33,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
+            // ===== 读取 CSV =====
             let csv = fs.readFileSync('tasks.csv', 'utf8');
             let lines = csv.split('\n').filter(line => line.trim() !== '');
 
@@ -38,17 +42,12 @@ jobs:
 
             let issues = [];
 
-            // ===== 获取 issue =====
-            if (!context.payload.issue) {
-              const { data } = await github.rest.issues.listForRepo({
-                owner,
-                repo,
-                state: 'open',
-                per_page: 100
-              });
-              issues = data;
-            } else {
+            // ✅ 只处理当前 issue（避免权限问题）
+            if (context.payload.issue) {
               issues = [context.payload.issue];
+            } else {
+              console.log("Skip full sync due to permission limits");
+              return;
             }
 
             for (const issue of issues) {
@@ -58,38 +57,38 @@ jobs:
 
               const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-              // Repo
+              // ===== Repo =====
               const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
               const repoUrl = repoMatch ? repoMatch[0] : "";
 
-              // Owner
+              // ===== Owner =====
               const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
               const taskOwner = ownerMatch ? ownerMatch[1] : "";
 
-              // PR
+              // ===== PR =====
               const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
               const prUrl = prMatch ? prMatch[1] : "";
 
-              if (!repoUrl) continue;
+              if (!repoUrl) {
+                console.log("No repo URL found, skip");
+                continue;
+              }
 
               let found = false;
 
               rows = rows.map(row => {
                 let parts = row.split(',');
 
+                // 防御：补齐列
                 while (parts.length < 7) parts.push('');
 
+                // Project,Repo,Issue,Owner,PR,Status,Source
                 if (parts[2] === issueUrl || (parts[2] === "" && parts[1] === repoUrl)) {
-
                   parts[2] = issueUrl;
                   parts[3] = taskOwner;
+                  parts[4] = prUrl;
 
-                  // ✅ 不覆盖已有 PR（除非 issue 有新 PR）
-                  if (prUrl) {
-                    parts[4] = prUrl;
-                  }
-
-                  // PR 为空才清 status
+                  // PR 为空 → 清空状态
                   if (!prUrl) {
                     parts[5] = "";
                   }
@@ -100,7 +99,7 @@ jobs:
                 return parts.join(',');
               });
 
-              // 不存在就新增
+              // ===== 不存在就新增 =====
               if (!found) {
                 const project = title.replace("[Task]", "").trim();
 
@@ -118,21 +117,16 @@ jobs:
               }
             }
 
+            // ===== 写回 CSV =====
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
-      - name: Commit changes (safe)
+      # 3️⃣ Debug（建议保留）
+      - name: Show CSV
         run: |
-          git config user.name "bot"
-          git config user.email "bot@github.com"
-          git add tasks.csv
+          echo "===== tasks.csv ====="
+          cat tasks.csv
 
-          if ! git diff --cached --quiet; then
-            git commit -m "sync issue to csv"
-            echo "Changes committed"
-          else
-            echo "No changes"
-          fi
-
-          # ⚠️ 不 push（避免权限问题）
-          echo "Skip push due to permission limitation"
+      # 4️⃣ 不 push（避免 403）
+      - name: Skip push
+        run: echo "Skip push due to read-only permissions"
