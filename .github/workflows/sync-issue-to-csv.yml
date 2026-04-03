@@ -30,7 +30,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // ===== 读取 CSV =====
+            // ===== 读取 CSV 或初始化 =====
             let csv = fs.existsSync('tasks.csv') ? fs.readFileSync('tasks.csv', 'utf8') : "Project,Repo,Issue,Owner,PR,Status,Source\n";
             let lines = csv.split('\n').filter(line => line.trim() !== '');
             const header = lines[0];
@@ -69,7 +69,7 @@ jobs:
               const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
               const taskOwner = ownerMatch ? ownerMatch[1] : "";
 
-              // ===== PR =====
+              // ===== PR URL =====
               const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
               const prUrl = prMatch ? prMatch[1] : "";
 
@@ -95,6 +95,7 @@ jobs:
                 return parts.join(',');
               });
 
+              // ===== 不存在就新增 =====
               if (!found) {
                 const project = title.replace("[Task]", "").trim();
                 const newRow = [
@@ -114,16 +115,11 @@ jobs:
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
+      - name: Upload CSV artifact (for manual download/merge)
+        uses: actions/upload-artifact@v3
+        with:
+          name: tasks-csv
+          path: tasks.csv
+
       - name: Show CSV (Debug)
         run: cat tasks.csv
-
-      - name: Create PR with updated CSV
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "sync issues to csv"
-          branch: "sync-issue-to-csv"
-          title: "Sync Issues to CSV"
-          body: "Automated CSV update from issues"
-          base: main
-          # path 可以省略，提交整个工作树，避免 ENOTDIR
