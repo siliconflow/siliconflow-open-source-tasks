@@ -50,7 +50,6 @@
 👉 系统会自动：
 - 记录 PR 链接  
 - 同步更新任务表（ [`tasks.csv`](https://github.com/siliconflow/siliconflow-open-source-tasks/blob/main/tasks.csv) ）  
-- 自动更新 README 展示  
 - 自动检测 PR 状态（open / merged / closed）
 
 > ⚠️ 注
