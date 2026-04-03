@@ -8,47 +8,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3️⃣ Install dependencies
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install pandas requests
 
-      # 4️⃣ Debug: list repo files (可选)
-      - name: List repo files
-        run: |
-          echo "Repo root:"
-          ls -la
-          echo "Scripts folder:"
-          ls -la scripts || echo "No scripts folder"
-
-      # 5️⃣ Run update_readme.py
       - name: Run update_readme.py
         run: python scripts/update_readme.py
 
-      # 6️⃣ Commit changes locally (no push)
       - name: Commit changes locally
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md tasks.csv || echo "No files changed"
-          if ! git diff --cached --quiet; then
-            git commit -m "Update task table / README" || echo "Commit failed"
-          else
-            echo "No changes to commit"
-          fi
-          echo "Skip git push due to read-only permissions"
 
-      # 7️⃣ Final message
-      - name: Done
-        run: echo "Update README workflow completed (no push)"
+          if ! git diff --cached --quiet; then
+            git commit -m "Update task table / README"
+          else
+            echo "No changes"
+          fi
+
+          echo "Skip push due to read-only permissions"
