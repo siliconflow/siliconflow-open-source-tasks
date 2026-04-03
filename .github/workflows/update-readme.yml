@@ -8,23 +8,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ===========================
       # 1️⃣ Checkout repo
-      # ===========================
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ===========================
       # 2️⃣ Setup Python
-      # ===========================
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ===========================
-      # 3️⃣ Debug: show files (可选)
-      # ===========================
+      # 3️⃣ Install dependencies
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas
+
+      # 4️⃣ Debug: list repo files (可选)
       - name: List repo files
         run: |
           echo "Repo root:"
@@ -32,16 +32,12 @@ jobs:
           echo "Scripts folder:"
           ls -la scripts || echo "No scripts folder"
 
-      # ===========================
-      # 4️⃣ Run update_readme.py
-      # ===========================
+      # 5️⃣ Run update_readme.py
       - name: Run update_readme.py
         run: python scripts/update_readme.py
 
-      # ===========================
-      # 5️⃣ (可选) Commit changes in runner only
-      # ===========================
-      - name: Commit changes locally (no push)
+      # 6️⃣ Commit changes locally (no push)
+      - name: Commit changes locally
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -53,8 +49,6 @@ jobs:
           fi
           echo "Skip git push due to read-only permissions"
 
-      # ===========================
-      # 6️⃣ Final message
-      # ===========================
+      # 7️⃣ Final message
       - name: Done
         run: echo "Update README workflow completed (no push)"
