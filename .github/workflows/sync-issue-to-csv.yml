@@ -1,10 +1,6 @@
 name: Sync Issue to CSV
 
 on:
-  issues:
-    types: [opened, edited]
-  issue_comment:
-    types: [created]
   schedule:
     - cron: "*/10 * * * *" # 每10分钟兜底
   workflow_dispatch:
@@ -20,7 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync Issue to CSV
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Sync all issues to CSV
         uses: actions/github-script@v7
         with:
           script: |
@@ -34,13 +35,22 @@ jobs:
             const header = lines[0];
             let rows = lines.slice(1);
 
-            // ===== 当前触发的 issue =====
+            // ===== 获取所有 open Issue =====
             let issues = [];
-            if (context.payload.issue) {
-              issues = [context.payload.issue];
-            } else {
-              console.log("Skip full sync due to permission limits");
-              return;
+            const perPage = 100;
+            let page = 1;
+            while (true) {
+              const { data } = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: 'open',
+                per_page: perPage,
+                page
+              });
+              if (!data.length) break;
+              issues = issues.concat(data);
+              if (data.length < perPage) break;
+              page++;
             }
 
             for (const issue of issues) {
@@ -49,10 +59,10 @@ jobs:
               const issueNumber = issue.number;
               const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-              // ===== Repo =====
+              // ===== Repo URL =====
               const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
               const repoUrl = repoMatch ? repoMatch[0] : "";
-              if (!repoUrl) continue; // 必须有 repo
+              if (!repoUrl) continue;
 
               // ===== Owner =====
               const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
@@ -65,7 +75,6 @@ jobs:
               // ===== Status =====
               let status = "";
               if (prUrl) {
-                // 默认 open，如果 merged/closed 信息在 body 可解析，这里简单占位
                 const mergedMatch = body.match(/Status:\s*(merged|closed|open)/i);
                 status = mergedMatch ? mergedMatch[1].toLowerCase() : "open";
               } else {
@@ -73,12 +82,10 @@ jobs:
               }
 
               let found = false;
-
               rows = rows.map(row => {
                 let parts = row.split(',');
                 while (parts.length < 7) parts.push('');
 
-                // Project,Repo,Issue,Owner,PR,Status,Source
                 if (parts[2] === issueUrl || (parts[2] === "" && parts[1] === repoUrl)) {
                   parts[2] = issueUrl;
                   parts[3] = taskOwner;
@@ -90,7 +97,6 @@ jobs:
                 return parts.join(',');
               });
 
-              // ===== 不存在就新增 =====
               if (!found) {
                 const project = title.replace("[Task]", "").trim();
                 const newRow = [
@@ -106,12 +112,17 @@ jobs:
               }
             }
 
-            // ===== 写回 CSV（临时环境） =====
+            // ===== 写回 CSV（本地） =====
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
-      - name: Show CSV (Debug)
-        run: cat tasks.csv
-
-      - name: Skip push
-        run: echo "No write permission, CSV changes are local to runner"
+      - name: Create PR with updated CSV
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "sync issues to csv"
+          branch: "sync-issue-to-csv"
+          title: "Sync Issue to CSV"
+          body: "Automated CSV update from issues"
+          base: main
+          path: tasks.csv
