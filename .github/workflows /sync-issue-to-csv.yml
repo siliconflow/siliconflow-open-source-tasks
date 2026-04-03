@@ -25,7 +25,6 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // ===== 读取 CSV =====
             let csv = fs.readFileSync('tasks.csv', 'utf8');
             let lines = csv.split('\n').filter(line => line.trim() !== '');
 
@@ -34,7 +33,7 @@ jobs:
 
             let issues = [];
 
-            // ===== 判断触发方式 =====
+            // ===== 获取 issue =====
             if (!context.payload.issue) {
               const { data } = await github.rest.issues.listForRepo({
                 owner,
@@ -54,15 +53,15 @@ jobs:
 
               const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-              // ===== Repo =====
+              // Repo
               const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
               const repoUrl = repoMatch ? repoMatch[0] : "";
 
-              // ===== Owner =====
+              // Owner
               const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
               const taskOwner = ownerMatch ? ownerMatch[1] : "";
 
-              // ===== PR =====
+              // PR
               const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
               const prUrl = prMatch ? prMatch[1] : "";
 
@@ -73,21 +72,19 @@ jobs:
               rows = rows.map(row => {
                 let parts = row.split(',');
 
-                // 保证列数
                 while (parts.length < 7) parts.push('');
 
-                // 匹配 Issue 或 Repo
                 if (parts[2] === issueUrl || (parts[2] === "" && parts[1] === repoUrl)) {
 
-                  parts[2] = issueUrl;     // Issue URL
-                  parts[3] = taskOwner;    // Owner
+                  parts[2] = issueUrl;
+                  parts[3] = taskOwner;
 
-                  // ✅ 关键：只有 issue 有 PR 时才更新（避免覆盖 /submit）
+                  // ✅ 不覆盖已有 PR（除非 issue 有新 PR）
                   if (prUrl) {
                     parts[4] = prUrl;
                   }
 
-                  // PR 没有 → 清空状态
+                  // PR 为空才清 status
                   if (!prUrl) {
                     parts[5] = "";
                   }
@@ -98,7 +95,7 @@ jobs:
                 return parts.join(',');
               });
 
-              // ===== 不存在就新增 =====
+              // 不存在就新增
               if (!found) {
                 const project = title.replace("[Task]", "").trim();
 
@@ -107,7 +104,7 @@ jobs:
                   repoUrl,
                   issueUrl,
                   taskOwner,
-                  prUrl,     // 新增时可以写
+                  prUrl,
                   "",
                   "community"
                 ].join(',');
@@ -116,7 +113,6 @@ jobs:
               }
             }
 
-            // ===== 写回 CSV =====
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
@@ -126,7 +122,6 @@ jobs:
           git config user.email "bot@github.com"
           git add tasks.csv
 
-          # 仅在有改动时 commit
           if ! git diff --cached --quiet; then
             git commit -m "sync issue to csv"
             echo "Changes committed"
