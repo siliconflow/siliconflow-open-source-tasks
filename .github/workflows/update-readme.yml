@@ -1,8 +1,6 @@
-name: Update README task list
+name: Update README
 
 on:
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,25 +8,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # ===========================
+      # 1️⃣ Checkout repo
+      # ===========================
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
+      # ===========================
+      # 2️⃣ Setup Python
+      # ===========================
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
-      - name: Install dependencies
-        run: pip install pandas requests
-
-      - name: Update README
+      # ===========================
+      # 3️⃣ Debug: show files (可选)
+      # ===========================
+      - name: List repo files
         run: |
-          echo "Running script..."
-          python scripts/update_readme.py
+          echo "Repo root:"
+          ls -la
+          echo "Scripts folder:"
+          ls -la scripts || echo "No scripts folder"
 
-      - name: Commit and Push
+      # ===========================
+      # 4️⃣ Run update_readme.py
+      # ===========================
+      - name: Run update_readme.py
+        run: python scripts/update_readme.py
+
+      # ===========================
+      # 5️⃣ (可选) Commit changes in runner only
+      # ===========================
+      - name: Commit changes locally (no push)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md tasks.csv
-          git commit -m "Update task table" || echo "No changes"
-          git push
+          git add README.md tasks.csv || echo "No files changed"
+          if ! git diff --cached --quiet; then
+            git commit -m "Update task table / README" || echo "Commit failed"
+          else
+            echo "No changes to commit"
+          fi
+          echo "Skip git push due to read-only permissions"
+
+      # ===========================
+      # 6️⃣ Final message
+      # ===========================
+      - name: Done
+        run: echo "Update README workflow completed (no push)"
