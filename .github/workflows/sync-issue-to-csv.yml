@@ -1,4 +1,4 @@
-name: Sync Issue to CSV
+name: Sync Issues to CSV
 
 on:
   schedule:
@@ -14,7 +14,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -30,7 +31,7 @@ jobs:
             const repo = context.repo.repo;
 
             // ===== 读取 CSV =====
-            let csv = fs.readFileSync('tasks.csv', 'utf8');
+            let csv = fs.existsSync('tasks.csv') ? fs.readFileSync('tasks.csv', 'utf8') : "Project,Repo,Issue,Owner,PR,Status,Source\n";
             let lines = csv.split('\n').filter(line => line.trim() !== '');
             const header = lines[0];
             let rows = lines.slice(1);
@@ -77,8 +78,6 @@ jobs:
               if (prUrl) {
                 const mergedMatch = body.match(/Status:\s*(merged|closed|open)/i);
                 status = mergedMatch ? mergedMatch[1].toLowerCase() : "open";
-              } else {
-                status = "";
               }
 
               let found = false;
@@ -93,7 +92,6 @@ jobs:
                   parts[5] = status;
                   found = true;
                 }
-
                 return parts.join(',');
               });
 
@@ -112,9 +110,12 @@ jobs:
               }
             }
 
-            // ===== 写回 CSV（本地） =====
+            // ===== 写回 CSV =====
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
+
+      - name: Show CSV (Debug)
+        run: cat tasks.csv
 
       - name: Create PR with updated CSV
         uses: peter-evans/create-pull-request@v6
@@ -122,7 +123,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "sync issues to csv"
           branch: "sync-issue-to-csv"
-          title: "Sync Issue to CSV"
+          title: "Sync Issues to CSV"
           body: "Automated CSV update from issues"
           base: main
-          path: tasks.csv
+          # path 可以省略，提交整个工作树，避免 ENOTDIR
