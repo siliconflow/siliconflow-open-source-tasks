@@ -9,6 +9,11 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
+# 👇 加这里（关键！）
+permissions:
+  issues: read
+  contents: read
+
 jobs:
   sync:
     runs-on: ubuntu-latest
