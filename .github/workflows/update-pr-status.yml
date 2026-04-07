@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  issues: write     # ⚠️ 允许更新 issue（关闭、改 body、删 label）
-  contents: read    # 仍然不能写仓库
+  issues: write
+  contents: read
 
 jobs:
   update-status:
@@ -119,6 +119,7 @@ jobs:
                         name: 'claimed'
                       });
                     } catch (e) {}
+
                   }
 
                 } else {
@@ -137,7 +138,7 @@ jobs:
             const newCsv = [header, ...updatedRows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
-      - name: Show CSV (Debug)
+      - name: Show CSV
         run: cat tasks.csv
 
       - name: Upload CSV artifact
@@ -146,5 +147,5 @@ jobs:
           name: tasks-csv-status
           path: tasks.csv
 
-      - name: Skip push
-        run: echo "Read-only mode: CSV saved as artifact"
+      - name: Done
+        run: echo "Read-only mode, CSV uploaded as artifact"
