@@ -6,7 +6,7 @@ on:
   issue_comment:
     types: [created]
   schedule:
-    - cron: "*/10 * * * *" # 每10分钟兜底
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -29,13 +29,11 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // ===== 读取 CSV =====
             let csv = fs.existsSync('tasks.csv') ? fs.readFileSync('tasks.csv', 'utf8') : "Project,Repo,Issue,Owner,PR,Status,Source\n";
             let lines = csv.split('\n').filter(line => line.trim() !== '');
             const header = lines[0];
             let rows = lines.slice(1);
 
-            // ===== 当前触发的 issue =====
             let issues = [];
             if (context.payload.issue) {
               issues = [context.payload.issue];
@@ -50,20 +48,16 @@ jobs:
               const issueNumber = issue.number;
               const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-              // ===== Repo =====
               const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
               const repoUrl = repoMatch ? repoMatch[0] : "";
               if (!repoUrl) continue;
 
-              // ===== Owner =====
               const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
               const taskOwner = ownerMatch ? ownerMatch[1] : "";
 
-              // ===== PR =====
               const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
               const prUrl = prMatch ? prMatch[1] : "";
 
-              // ===== Status =====
               let status = "";
               if (prUrl) {
                 const mergedMatch = body.match(/Status:\s*(merged|closed|open)/i);
@@ -99,18 +93,17 @@ jobs:
               }
             }
 
-            // ===== 写回 CSV =====
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
-      - name: Show CSV (Debug)
+      - name: Show CSV
         run: cat tasks.csv
 
       - name: Upload CSV artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tasks-csv
           path: tasks.csv
 
-      - name: Skip push (Read-only)
+      - name: Skip push
         run: echo "No write permission, CSV changes are local to runner"
