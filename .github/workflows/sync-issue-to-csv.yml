@@ -35,11 +35,18 @@ jobs:
             let rows = lines.slice(1);
 
             let issues = [];
+            
             if (context.payload.issue) {
-              issues = [context.payload.issue];
+            issues = [context.payload.issue];
             } else {
-              console.log("Skip full sync due to permission limits");
-              return;
+              // 手动触发 / schedule → 拉全部 issue
+              const { data } = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: 'open',
+                per_page: 100
+              });
+              issues = data;
             }
 
             for (const issue of issues) {
