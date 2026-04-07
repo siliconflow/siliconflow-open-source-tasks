@@ -2,15 +2,20 @@ name: Update PR Status
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # 每30分钟执行一次
+    - cron: "*/30 * * * *"
   workflow_dispatch:
+
+permissions:
+  issues: write     # ⚠️ 允许更新 issue（关闭、改 body、删 label）
+  contents: read    # 仍然不能写仓库
 
 jobs:
   update-status:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Update PR Status
         uses: actions/github-script@v7
@@ -21,7 +26,10 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            let csv = fs.readFileSync('tasks.csv', 'utf8');
+            let csv = fs.existsSync('tasks.csv')
+              ? fs.readFileSync('tasks.csv', 'utf8')
+              : "Project,Repo,Issue,Owner,PR,Status,Source\n";
+
             let lines = csv.split('\n').filter(line => line.trim() !== '');
 
             const header = lines[0];
@@ -32,12 +40,10 @@ jobs:
             for (let row of rows) {
               let parts = row.split(',');
 
-              // 防御：补齐列
               while (parts.length < 7) parts.push('');
 
               let issueUrl = parts[2];
               let prUrl = parts[4];
-              let status = parts[5];
 
               if (!prUrl || !prUrl.includes('github.com')) {
                 updatedRows.push(parts.join(','));
@@ -45,7 +51,6 @@ jobs:
               }
 
               try {
-                // ===== 解析 PR =====
                 const match = prUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/);
                 if (!match) {
                   updatedRows.push(parts.join(','));
@@ -64,11 +69,9 @@ jobs:
 
                 let newStatus = "open";
 
-                // ===== merged =====
                 if (pr.merged_at) {
                   newStatus = "merged";
 
-                  // 关闭 Issue
                   const issueMatch = issueUrl.match(/issues\/(\d+)/);
                   if (issueMatch) {
                     const issue_number = parseInt(issueMatch[1]);
@@ -81,7 +84,6 @@ jobs:
                     });
                   }
 
-                // ===== closed（未合并）=====
                 } else if (pr.state === "closed") {
                   newStatus = "closed";
 
@@ -97,7 +99,6 @@ jobs:
 
                     let body = issueData.body || "";
 
-                    // 清空 Owner / PR / ClaimedAt
                     body = body
                       .replace(/Owner:.*/g, "")
                       .replace(/PR:.*/g, "")
@@ -110,7 +111,6 @@ jobs:
                       body
                     });
 
-                    // 删除 label
                     try {
                       await github.rest.issues.removeLabel({
                         owner,
@@ -121,7 +121,6 @@ jobs:
                     } catch (e) {}
                   }
 
-                // ===== open =====
                 } else {
                   newStatus = "open";
                 }
@@ -138,10 +137,14 @@ jobs:
             const newCsv = [header, ...updatedRows].join('\n');
             fs.writeFileSync('tasks.csv', newCsv);
 
-      - name: Commit changes
-        run: |
-          git config user.name "bot"
-          git config user.email "bot@github.com"
-          git add tasks.csv
-          git commit -m "update PR status" || echo "no changes"
-          git push
+      - name: Show CSV (Debug)
+        run: cat tasks.csv
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tasks-csv-status
+          path: tasks.csv
+
+      - name: Skip push
+        run: echo "Read-only mode: CSV saved as artifact"
