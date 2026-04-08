@@ -2,7 +2,7 @@ name: Sync Issue to CSV
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, labeled]
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -16,99 +16,111 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Sync Issue to CSV
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
 
-            let csv = fs.existsSync('tasks.csv')
-              ? fs.readFileSync('tasks.csv', 'utf8')
-              : "Project,Repo,Issue,Owner,PR,Status,Source\n";
+            const csvPath = 'tasks.csv';
+            if (!fs.existsSync(csvPath)) {
+              console.log("⚠️ CSV not found, create with header");
+              fs.writeFileSync(csvPath, "Project,Repo,Issue,Owner,PR,Status,Source\n");
+            }
 
+            let csv = fs.readFileSync(csvPath, 'utf8');
             let lines = csv.split('\n').filter(line => line.trim() !== '');
             const header = lines[0];
             let rows = lines.slice(1);
 
-            if (!context.payload.issue) {
-              console.log("Skip (no issue)");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // ===== 当前触发的 issue =====
+            let issues = [];
+            if (context.payload.issue) {
+              issues = [context.payload.issue];
+            } else {
+              console.log("⚠️ No issue payload, skip sync to avoid overwriting CSV");
               return;
             }
 
-            const issue = context.payload.issue;
+            for (const issue of issues) {
+              const title = issue.title;
+              const body = issue.body || "";
+              const issueNumber = issue.number;
+              const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-            const title = issue.title;
-            const body = issue.body || "";
-            const issueNumber = issue.number;
-            const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
-
-            // ===== Repo =====
-            const repoMatch = body.match(/https:\/\/github\.com\/[^\s)\n]+/);
-            const repoUrl = repoMatch ? repoMatch[0] : "";
-
-            // ===== Owner =====
-            const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
-            const taskOwner = ownerMatch ? ownerMatch[1] : "";
-
-            // ===== PR =====
-            const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
-            const prUrl = prMatch ? prMatch[1] : "";
-
-            // ===== Status =====
-            let status = prUrl ? "open" : "";
-
-            // ===== Source =====
-            const sourceMatch = body.match(/Source:\s*(\w+)/i);
-            let source = sourceMatch ? sourceMatch[1].toLowerCase() : "official";
-
-            if (!["official", "community"].includes(source)) {
-              source = "official";
-            }
-
-            let found = false;
-
-            rows = rows.map(row => {
-              let parts = row.split(',');
-              while (parts.length < 7) parts.push('');
-
-              if (parts[2] === issueUrl) {
-                parts[3] = taskOwner;
-                parts[4] = prUrl;
-                parts[5] = status;
-                parts[6] = source;
-                found = true;
+              // ===== Repo =====
+              const repoMatch = body.match(/https:\/\/github\.com\/[^\s)\n]+/);
+              const repoUrl = repoMatch ? repoMatch[0] : null;
+              if (!repoUrl) {
+                console.log(`⚠️ Skip issue ${issueUrl}: no valid repo URL`);
+                continue;
               }
 
-              return parts.join(',');
-            });
+              // ===== Owner =====
+              const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
+              const taskOwner = ownerMatch ? ownerMatch[1] : "";
 
-            if (!found) {
-              const project = title.replace("[Task]", "").trim();
-              const newRow = [
-                project,
-                repoUrl,
-                issueUrl,
-                taskOwner,
-                prUrl,
-                status,
-                source
-              ].join(',');
+              // ===== PR =====
+              const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
+              const prUrl = prMatch ? prMatch[1] : "";
 
-              rows.push(newRow);
+              // ===== Status =====
+              let status = "";
+              if (prUrl) {
+                const mergedMatch = body.match(/Status:\s*(merged|closed|open)/i);
+                status = mergedMatch ? mergedMatch[1].toLowerCase() : "open";
+              }
+
+              // ===== Source =====
+              let source = "official";
+              if (issue.labels.some(l => l.name.toLowerCase() === "proposal")) {
+                source = "community";
+              }
+
+              let found = false;
+
+              rows = rows.map(row => {
+                let parts = row.split(',');
+                while (parts.length < 7) parts.push('');
+
+                if (parts[2] === issueUrl || (parts[2] === "" && parts[1] === repoUrl)) {
+                  parts[2] = issueUrl;
+                  parts[3] = taskOwner;
+                  parts[4] = prUrl;
+                  parts[5] = status;
+                  parts[6] = source;
+                  found = true;
+                }
+
+                return parts.join(',');
+              });
+
+              if (!found) {
+                const project = title.replace("[Task]", "").trim();
+                const newRow = [
+                  project,
+                  repoUrl,
+                  issueUrl,
+                  taskOwner,
+                  prUrl,
+                  status,
+                  source
+                ].join(',');
+                rows.push(newRow);
+              }
             }
 
+            // ===== 写回 CSV（只更新 runner 本地，不 push） =====
             const newCsv = [header, ...rows].join('\n');
-            fs.writeFileSync('tasks.csv', newCsv);
+            fs.writeFileSync(csvPath, newCsv);
+            console.log("✅ CSV updated locally");
 
-      - name: Show CSV
-        run: cat tasks.csv
-
-      - name: Upload CSV artifact
+      - name: Upload CSV Artifact
         uses: actions/upload-artifact@v4
         with:
           name: tasks-csv
