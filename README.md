@@ -9,12 +9,13 @@
 
 ## 📋 任务列表
 
-<!-- TASK_TABLE_START -->
 
-<!-- TASK_TABLE_END -->
+👉 [查看任务列表（CSV）](./tasks.csv)
 
 
-> ⚠️ 注：表格中的 `Owner`、`PR`、`Status` 列由用户认领和提交 PR 时更新，`Source` 区分官方任务 / 用户提交任务。
+> ⚠️ 注：
+> 表格中的 `Owner`、`PR`列由用户认领和提交 PR 时更新，`Source` 区分官方任务 / 用户提交任务。
+> 数据由 Issue 同步生成
 
 
 
