@@ -48,7 +48,7 @@ jobs:
             const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
             // ===== Repo =====
-            const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
+            const repoMatch = body.match(/https:\/\/github\.com\/[^\s)\n]+/);
             const repoUrl = repoMatch ? repoMatch[0] : "";
 
             // ===== Owner =====
