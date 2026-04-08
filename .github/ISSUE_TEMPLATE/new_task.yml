@@ -28,9 +28,12 @@ body:
     validations:
       required: true
 
-  # 👇👇👇 关键新增（不要删）
-  - type: markdown
+  # ✅ 正确写法（关键）
+  - type: input
+    id: source
     attributes:
-      value: |
-        ---
-        Source: community
+      label: Source
+      description: 系统字段（请勿修改）
+      value: community
+    validations:
+      required: true
