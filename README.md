@@ -11,6 +11,9 @@
 ## 📋 任务列表
 
 <!-- TASK_TABLE_START -->
+| Project | Repo | Issue | Owner | PR | Status | Source |
+|---------|------|-------|-------|----|--------|--------|
+| 接入 LibreChat | [link](https://github.com/danny-avila/LibreChat) | [#1](https://github.com/siliconflow/siliconflow-open-source-tasks/issues/1) |  |  |  | official |
 
 <!-- TASK_TABLE_END -->
 
