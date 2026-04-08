@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Sync Issue to CSV
         uses: actions/github-script@v7
@@ -24,28 +25,38 @@ jobs:
           script: |
             const fs = require('fs');
 
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const csvPath = 'tasks.csv';
+
+            // ===== 确保 CSV 存在 =====
             if (!fs.existsSync(csvPath)) {
-              console.log("⚠️ CSV not found, create with header");
+              console.log("⚠️ CSV not found, create new");
               fs.writeFileSync(csvPath, "Project,Repo,Issue,Owner,PR,Status,Source\n");
             }
 
             let csv = fs.readFileSync(csvPath, 'utf8');
             let lines = csv.split('\n').filter(line => line.trim() !== '');
+
             const header = lines[0];
             let rows = lines.slice(1);
 
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            console.log("📄 Existing rows:", rows.length);
 
-            // ===== 当前触发的 issue =====
+            // ===== 获取 issue =====
             let issues = [];
+
             if (context.payload.issue) {
+              // 正常触发（推荐）
               issues = [context.payload.issue];
+              console.log("✅ Triggered by issue event");
             } else {
-              console.log("⚠️ No issue payload, skip sync to avoid overwriting CSV");
+              // 手动触发
+              console.log("⚠️ Manual run detected → skip to avoid clearing CSV");
               return;
             }
+
+            let updated = false;
 
             for (const issue of issues) {
               const title = issue.title;
@@ -53,11 +64,14 @@ jobs:
               const issueNumber = issue.number;
               const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-              // ===== Repo =====
+              console.log("🔍 Processing:", issueUrl);
+
+              // ===== Repo（增强匹配）=====
               const repoMatch = body.match(/https:\/\/github\.com\/[^\s)\n]+/);
               const repoUrl = repoMatch ? repoMatch[0] : null;
+
               if (!repoUrl) {
-                console.log(`⚠️ Skip issue ${issueUrl}: no valid repo URL`);
+                console.log("❌ Skip (no repo):", issueUrl);
                 continue;
               }
 
@@ -70,16 +84,24 @@ jobs:
               const prUrl = prMatch ? prMatch[1] : "";
 
               // ===== Status =====
-              let status = "";
-              if (prUrl) {
-                const mergedMatch = body.match(/Status:\s*(merged|closed|open)/i);
-                status = mergedMatch ? mergedMatch[1].toLowerCase() : "open";
+              let status = prUrl ? "open" : "";
+
+              // ===== Source（支持 body + label）=====
+              let source = "official";
+
+              // body 优先
+              const sourceMatch = body.match(/Source:\s*(\w+)/i);
+              if (sourceMatch) {
+                source = sourceMatch[1].toLowerCase();
               }
 
-              // ===== Source =====
-              let source = "official";
+              // label 覆盖
               if (issue.labels.some(l => l.name.toLowerCase() === "proposal")) {
                 source = "community";
+              }
+
+              if (!["official", "community"].includes(source)) {
+                source = "official";
               }
 
               let found = false;
@@ -89,21 +111,24 @@ jobs:
                 while (parts.length < 7) parts.push('');
 
                 if (parts[2] === issueUrl || (parts[2] === "" && parts[1] === repoUrl)) {
+                  parts[0] = title.replace("[Task]", "").trim();
+                  parts[1] = repoUrl;
                   parts[2] = issueUrl;
                   parts[3] = taskOwner;
                   parts[4] = prUrl;
                   parts[5] = status;
                   parts[6] = source;
                   found = true;
+                  updated = true;
                 }
 
                 return parts.join(',');
               });
 
+              // ===== 新增 =====
               if (!found) {
-                const project = title.replace("[Task]", "").trim();
                 const newRow = [
-                  project,
+                  title.replace("[Task]", "").trim(),
                   repoUrl,
                   issueUrl,
                   taskOwner,
@@ -111,14 +136,25 @@ jobs:
                   status,
                   source
                 ].join(',');
+
                 rows.push(newRow);
+                updated = true;
               }
             }
 
-            // ===== 写回 CSV（只更新 runner 本地，不 push） =====
+            // ===== 防止清空 CSV =====
+            if (!updated) {
+              console.log("⚠️ No updates, skip writing CSV");
+              return;
+            }
+
             const newCsv = [header, ...rows].join('\n');
             fs.writeFileSync(csvPath, newCsv);
-            console.log("✅ CSV updated locally");
+
+            console.log("✅ CSV updated:", rows.length, "rows");
+
+      - name: Show CSV (debug)
+        run: cat tasks.csv
 
       - name: Upload CSV Artifact
         uses: actions/upload-artifact@v4
