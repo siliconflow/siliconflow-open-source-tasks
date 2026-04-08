@@ -1,89 +1,115 @@
-- name: Sync Issue to CSV
-  uses: actions/github-script@v7
-  with:
-    script: |
-      const fs = require('fs');
-      const owner = context.repo.owner;
-      const repo = context.repo.repo;
+name: Sync Issue to CSV
 
-      let csv = fs.existsSync('tasks.csv')
-        ? fs.readFileSync('tasks.csv', 'utf8')
-        : "Project,Repo,Issue,Owner,PR,Status,Source\n";
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
 
-      let lines = csv.split('\n').filter(line => line.trim() !== '');
-      const header = lines[0];
-      let rows = lines.slice(1);
+permissions:
+  issues: read
+  contents: read
 
-      let issues = [];
-      if (context.payload.issue) {
-        issues = [context.payload.issue];
-      } else {
-        console.log("Skip full sync");
-        return;
-      }
+jobs:
+  sync:
+    runs-on: ubuntu-latest
 
-      for (const issue of issues) {
-        const title = issue.title;
-        const body = issue.body || "";
-        const issueNumber = issue.number;
-        const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-        // ===== Repo =====
-        const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
-        const repoUrl = repoMatch ? repoMatch[0] : "";
+      - name: Sync Issue to CSV
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-        // ===== Owner =====
-        const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
-        const taskOwner = ownerMatch ? ownerMatch[1] : "";
+            let csv = fs.existsSync('tasks.csv')
+              ? fs.readFileSync('tasks.csv', 'utf8')
+              : "Project,Repo,Issue,Owner,PR,Status,Source\n";
 
-        // ===== PR =====
-        const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
-        const prUrl = prMatch ? prMatch[1] : "";
+            let lines = csv.split('\n').filter(line => line.trim() !== '');
+            const header = lines[0];
+            let rows = lines.slice(1);
 
-        // ===== Status =====
-        let status = prUrl ? "open" : "";
+            if (!context.payload.issue) {
+              console.log("Skip (no issue)");
+              return;
+            }
 
-        // ===== Source（核心逻辑）=====
-        const sourceMatch = body.match(/Source:\s*(\w+)/i);
-        let source = sourceMatch ? sourceMatch[1].toLowerCase() : "official";
+            const issue = context.payload.issue;
 
-        // 防御非法值
-        if (!["official", "community"].includes(source)) {
-          source = "official";
-        }
+            const title = issue.title;
+            const body = issue.body || "";
+            const issueNumber = issue.number;
+            const issueUrl = `https://github.com/${owner}/${repo}/issues/${issueNumber}`;
 
-        let found = false;
+            // ===== Repo =====
+            const repoMatch = body.match(/https:\/\/github\.com\/[^\s]+/);
+            const repoUrl = repoMatch ? repoMatch[0] : "";
 
-        rows = rows.map(row => {
-          let parts = row.split(',');
-          while (parts.length < 7) parts.push('');
+            // ===== Owner =====
+            const ownerMatch = body.match(/Owner:\s*@([^\s]+)/);
+            const taskOwner = ownerMatch ? ownerMatch[1] : "";
 
-          if (parts[2] === issueUrl) {
-            parts[3] = taskOwner;
-            parts[4] = prUrl;
-            parts[5] = status;
-            parts[6] = source;
-            found = true;
-          }
+            // ===== PR =====
+            const prMatch = body.match(/PR:\s*(https:\/\/[^\s]+)/);
+            const prUrl = prMatch ? prMatch[1] : "";
 
-          return parts.join(',');
-        });
+            // ===== Status =====
+            let status = prUrl ? "open" : "";
 
-        if (!found) {
-          const project = title.replace("[Task]", "").trim();
-          const newRow = [
-            project,
-            repoUrl,
-            issueUrl,
-            taskOwner,
-            prUrl,
-            status,
-            source
-          ].join(',');
+            // ===== Source =====
+            const sourceMatch = body.match(/Source:\s*(\w+)/i);
+            let source = sourceMatch ? sourceMatch[1].toLowerCase() : "official";
 
-          rows.push(newRow);
-        }
-      }
+            if (!["official", "community"].includes(source)) {
+              source = "official";
+            }
 
-      const newCsv = [header, ...rows].join('\n');
-      fs.writeFileSync('tasks.csv', newCsv);
+            let found = false;
+
+            rows = rows.map(row => {
+              let parts = row.split(',');
+              while (parts.length < 7) parts.push('');
+
+              if (parts[2] === issueUrl) {
+                parts[3] = taskOwner;
+                parts[4] = prUrl;
+                parts[5] = status;
+                parts[6] = source;
+                found = true;
+              }
+
+              return parts.join(',');
+            });
+
+            if (!found) {
+              const project = title.replace("[Task]", "").trim();
+              const newRow = [
+                project,
+                repoUrl,
+                issueUrl,
+                taskOwner,
+                prUrl,
+                status,
+                source
+              ].join(',');
+
+              rows.push(newRow);
+            }
+
+            const newCsv = [header, ...rows].join('\n');
+            fs.writeFileSync('tasks.csv', newCsv);
+
+      - name: Show CSV
+        run: cat tasks.csv
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tasks-csv
+          path: tasks.csv
