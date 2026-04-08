@@ -27,3 +27,10 @@ body:
       placeholder: 请说明该项目的影响力或使用价值
     validations:
       required: true
+
+  # 👇👇👇 关键新增（不要删）
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        Source: community
