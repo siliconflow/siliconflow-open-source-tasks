@@ -119,7 +119,7 @@
 并在邮件中附上截图证明：
 
 - PR 已成功 Merge 的截图（GitHub 页面）  
-- 可清晰看到你的 GitHub ID 和 PR 状态  
+- 该 GitHub ID 的个人主页（证明该账号归属）
 
 ---
 
