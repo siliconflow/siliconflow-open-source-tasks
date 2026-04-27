@@ -78,10 +78,61 @@
 
 ## 🎯 参考示例
 
-- 标准接入说明文档：[示例链接或文档路径]  
-- API 兼容示例代码：[示例 GitHub 仓库或文件路径]  
+详细文档可见：[API手册](https://docs.siliconflow.cn/cn/api-reference)
 
-> 请参考示例完成任务，以保证接入规范和可运行性
+我们提供两种主流兼容规范，开发者可根据目标开源项目的实际情况选择：
+
+### 1. OpenAI 兼容规范（**强烈推荐**，大多数项目首选）
+
+**标准接入说明文档**：  
+[SiliconFlow OpenAI 兼容 API 快速开始](https://docs.siliconflow.cn/cn/userguide/quickstart)
+
+**API 兼容示例代码**（Python + `openai` SDK）：
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="YOUR_KEY",
+    base_url="https://api.siliconflow.cn/v1"
+)
+
+response = client.chat.completions.create(
+    model="Pro/zai-org/GLM-4.7",
+    messages=[{"role": "user", "content": "你好，请介绍一下自己"}],
+    max_tokens=1024
+)
+
+print(response.choices[0].message.content)
+```
+
+### 2. Anthropic 兼容规范
+
+**标准接入说明文档**：  
+[SiliconFlow Anthropic 兼容 API 文档](https://docs.siliconflow.cn/cn/api-reference/chat-completions/messages)
+
+**API 兼容示例代码**（Python + 官方 `anthropic` SDK）：
+
+```python
+from anthropic import Anthropic
+
+client = Anthropic(
+    api_key="YOUR_KEY",
+    base_url="https://api.siliconflow.cn/"
+)
+
+response = client.messages.create(
+    model="Pro/zai-org/GLM-4.7",
+    max_tokens=1024,
+    messages=[
+        {"role": "user", "content": "你好，请介绍一下你自己"}
+    ]
+)
+
+print(response.content[0].text)
+```
+
+
 
 
 
