@@ -13,7 +13,7 @@
 👉 [查看任务列表（CSV）](./tasks.csv)
 
 
-> ⚠️ 注：
+> ⚠️ 注
 > - 表格中的 `Owner`、`PR`列由用户认领和提交 PR 时更新，`Source` 区分官方任务 / 用户提交任务
 > - 数据由 Issue 同步生成
 
@@ -74,11 +74,30 @@
 - 开放给开发者认领  
 
 
----
+
+## 🌐 API 站点说明（重要）
+
+硅基流动提供两个**完全独立**的 API 平台，请根据使用场景选择接入：
+
+| 站点 | 地址 |  中文界面名称 | 英文界面名称 |Base URL |
+|------|------|----------|------|----------|
+| 中文站 | https://www.siliconflow.cn | 硅基流动   |  SiliconFlow CN | https://api.siliconflow.cn/v1 |
+| 国际站 | https://www.siliconflow.com | SiliconFlow | SiliconFlow |https://api.siliconflow.com/v1 |
+
+
+> ⚠️ 注
+> - 两个站点的账号体系、API Key **不互通**
+> - 模型列表、调用地址 **不同**
+> - 如需支持全球用户，建议同时接入两站点
+
+
 
 ## 🎯 参考示例
 
-详细文档可见：[API手册](https://docs.siliconflow.cn/cn/api-reference)
+
+中文站详细文档可见：[API 手册](https://docs.siliconflow.cn/cn/api-reference)
+国际站文档见：[API Reference](https://docs.siliconflow.com/en/api-reference/)
+
 
 我们提供两种主流兼容规范，开发者可根据目标开源项目的实际情况选择：
 
@@ -94,7 +113,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="YOUR_KEY",
-    base_url="https://api.siliconflow.cn/v1"
+    base_url="https://api.siliconflow.cn/v1"   # 国际站改为 .com
 )
 
 response = client.chat.completions.create(
@@ -118,7 +137,7 @@ from anthropic import Anthropic
 
 client = Anthropic(
     api_key="YOUR_KEY",
-    base_url="https://api.siliconflow.cn/"
+    base_url="https://api.siliconflow.cn/"   # 国际站改为 .com
 )
 
 response = client.messages.create(
@@ -132,8 +151,7 @@ response = client.messages.create(
 print(response.content[0].text)
 ```
 
-
-
+> ⚠️ 注：国际站与中文站接入方式完全一致，只需将代码中的 `.cn` 替换为 `.com` 即可
 
 
 ## 📌 注意事项
