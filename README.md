@@ -1,4 +1,13 @@
-# SiliconFlow 开源贡献任务招募
+
+
+<h2 align="center">SiliconFlow 开源贡献任务招募</h2>
+
+<div align="center">
+
+简体中文 / [English](./README_EN.md)
+
+</div>
+
 
 
 欢迎加入 **SiliconFlow 生态合作计划**！  
