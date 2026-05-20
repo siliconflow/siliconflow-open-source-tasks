@@ -4,7 +4,7 @@ Welcome to the **SiliconFlow Ecosystem Program**!
 
 AI products are evolving faster than ever. To make SiliconFlow more accessible and reduce integration friction for users, we're launching an ecosystem co-building initiative, inviting contributors to bring SiliconFlow support to popular open-source projects. Whether you'd like to help submit an integration PR, or suggest a project that should support SiliconFlow, we'd love to have you involved.
 
-Once your PR is successfully merged by the target open source project, you'll receive a SiliconFlow credit voucher valid across the entire international platform, plus a chance to receive exclusive SiliconFlow merch 🎉
+Once your PR is successfully merged by the target open source project, contributors will receive complimentary SiliconFlow tokens — valid across our entire platform. 
 
 ---
 
@@ -155,10 +155,8 @@ print(response.content[0].text)
 
 Once your PR is successfully merged by the target open source project, you'll receive:
 
-- 🎟️ SiliconFlow credit voucher, valid across the entire international platform
-- 🎁 SiliconFlow merch, shipped directly to you as a thank-you from the community
+- Complimentary SiliconFlow tokens, valid across our entire international platform
 
-> Rewards may vary based on project impact and contribution quality. Merch availability subject to stock.
 
 ### 📬 How to Claim
 
@@ -172,7 +170,7 @@ Send an email to [community@siliconflow.com](mailto:community@siliconflow.com) w
 - GitHub ID
 - Task Issue link
 - PR link (merged)
-- The SiliconFlow account email you'd like the credit applied to
+- The SiliconFlow account email you'd like the tokens applied to
 
 **Attach screenshots of:**
 - The merged PR on GitHub
@@ -181,6 +179,6 @@ Send an email to [community@siliconflow.com](mailto:community@siliconflow.com) w
 ### ⚠️ Additional Notes
 
 - Each task is eligible for one reward claim only
-- Please ensure all information is accurate to avoid delays in credit issuance
-- Credits will be issued in batches after review
+- Please ensure all information is accurate to avoid delays in tokens issuance
+- Tokens will be issued in batches after review
 - For questions, leave a comment on the Issue or reach out via email
