@@ -1,11 +1,8 @@
 Project,Repo,Issue,Owner,PR,Status,Source
 接入 LibreChat,https://github.com/danny-avila/LibreChat,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/1,,,,official
-接入 crush,https://github.com/charmbracelet/crush,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/3,,,,official
-接入 Open Lovable,https://github.com/firecrawl/open-lovable,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/4,,,,official
+接入 crush,https://github.com/charmbracelet/crush,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/3,@123xiaode456-boop ,https://github.com/charmbracelet/catwalk/pull/360,Open,official
+接入 Open Lovable,https://github.com/firecrawl/open-lovable,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/4,@123xiaode456-boop ,https://github.com/firecrawl/open-lovable/pull/207,Open,official
 接入 AI SDK,https://github.com/vercel/ai,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/5,,,,official
-接入 DayFlow,https://github.com/JerryZLiu/Dayflow,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/6,,,,official
+接入 DayFlow,https://github.com/JerryZLiu/Dayflow,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/6,@nameless0120 ,https://github.com/JerryZLiu/Dayflow/pull/369,Open,official
 接入 屏译 · Screen Translator（overlay-translator）,https://github.com/ciddwd/overlay-translator,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/7,@ciddwd ,,,community
-
-
-
 接入 Hermes Agent,https://github.com/NousResearch/hermes-agent,https://github.com/siliconflow/siliconflow-open-source-tasks/issues/8,@xyshanren ,https://github.com/NousResearch/hermes-agent/pull/106330,Open,community
